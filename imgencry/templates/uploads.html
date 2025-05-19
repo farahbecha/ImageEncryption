@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Image Encryption Portal</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <style>
+  body { 
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: background-image 0.5s ease;
+  }
+
+  body:not(.logged-in) { 
+        background-image: url('/static/medical1.jpg') !important; /* login bg */
+    background-size: cover !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-color: transparent !important;
+  }
+
+  body.logged-in {
+    background-image: url('/static/medical2.jpg') !important; /* dashboard bg */
+    background-size: cover !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+  }
+
+  input, button { margin-top: 10px; display: block; }
+  #response { margin-top: 20px; white-space: pre-wrap; }
+  img { margin-top: 20px; max-width: 400px; display: block; }
+  code { background-color: #f2f2f2; padding: 2px 4px; }
+
+  .logged-in #dashboard-section {
+    padding: 20px;
+  }
+
+
+
+html, body {
+  height: 100%;
+}
+
+</style>
+
+</head>
+
+<body class="h-screen flex flex-col items-center justify-start py-10">
+
+
+  <!-- Login Section -->
+
+  <div id="login-section" class="w-full max-w-4xl bg-white bg-opacity-90 p-8 shadow-lg rounded-lg">
+
+    <header class="mb-6 flex items-center gap-4 justify-center">
+      <img src="https://cdn-icons-png.flaticon.com/512/3774/3774299.png" alt="Security Logo" class="w-12 h-12">
+      <h1 class="text-3xl font-bold text-blue-900">Image Encryption Portal</h1>
+    </header>
+
+    <div class="bg-white bg-opacity-90 p-8 shadow-lg rounded-lg">
+      <h2 class="text-2xl font-bold mb-4 text-center">Secure Login</h2>
+      <input id="username" type="text" placeholder="Username" class="w-full p-2 border rounded mb-4">
+      <input id="password" type="password" placeholder="Password" class="w-full p-2 border rounded mb-4">
+      <button onclick="login()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Login</button>
+    </div>
+  </div>
+
+  <!-- Dashboard Section (hidden until login) -->
+  <div id="dashboard-section" class="hidden w-full max-w-4xl logged-in">
+    <h1 class="text-3xl font-bold mb-6">🛡️ Image Encryption / Decryption</h1>
+
+    <!-- Original content preserved -->
+    <!-- ENCRYPT SECTION -->
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+      <h3 class="text-xl font-semibold mb-4">🔐 Encrypt Image</h3>
+      <input type="file" id="encryptImageInput" class="w-full p-2 border rounded mb-3" />
+      <button onclick="encryptImage()" class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700">Encrypt</button>
+      <div id="encryptResult" class="mt-4"></div>
+    </div>
+
+    <!-- DECRYPT SECTION -->
+    <div class="bg-white p-6 rounded-lg shadow">
+      <h3 class="text-xl font-semibold mb-4">🔓 Decrypt Image</h3>
+      <input type="file" id="decryptImageInput" class="w-full p-2 border rounded mb-3" />
+      <input type="text" id="decryptKeyInput" placeholder="Enter AES key (hex)" class="w-full p-2 border rounded mb-3" />
+      <button onclick="decryptImage()" class="w-full bg-purple-600 text-white p-2 rounded hover:bg-purple-700">Decrypt Image</button>
+
+      <div id="decryptResult" class="mt-4"></div>
+      <img id="decryptedImage" class="mx-auto" />
+      <a id="downloadLink" href="#" download="decrypted_image" style="display: none; margin-top: 10px;" class="block text-center text-blue-600 hover:text-blue-800">⬇️ Download Decrypted Image</a>
+    </div>
+  </div>
+
+  <script>
+    // Login function from second example
+    function login() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      if (username === 'doctor' && password === 'secure123') {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('dashboard-section').classList.remove('hidden');
+        document.body.classList.add('logged-in');
+      } else {
+        alert('Invalid credentials');
+      }
+    }
+
+    // Original functions preserved
+    async function encryptImage() {
+      const fileInput = document.getElementById('encryptImageInput');
+      if (fileInput.files.length === 0) {
+        alert("Please select an image to encrypt.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("image", fileInput.files[0]);
+
+      const response = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const result = await response.json();
+      if (result.error) {
+        document.getElementById("encryptResult").innerHTML = `<span style="color:red;">Error: ${result.error}</span>`;
+      } else {
+        document.getElementById("encryptResult").innerHTML = `
+          <strong>✅ Encrypted!</strong><br>
+          AES Key (hex): <code>${result.key}</code><br>
+          Encrypted Filename: <code>${result.filename}</code>
+        `;
+      }
+    }
+
+    async function decryptImage() {
+      const imageInput = document.getElementById("decryptImageInput");
+      const keyInput = document.getElementById("decryptKeyInput");
+      const file = imageInput.files[0];
+      const key = keyInput.value.trim();
+
+      if (!file || !key) {
+        alert("Please select a file and provide the AES key.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("key", key);
+
+      const response = await fetch("http://127.0.0.1:8000/decrypt", {
+        method: "POST",
+        body: formData
+      });
+
+      const decryptResultDiv = document.getElementById("decryptResult");
+      const decryptedImage = document.getElementById("decryptedImage");
+      const downloadLink = document.getElementById("downloadLink");
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+
+        // Show image
+        decryptedImage.src = imageUrl;
+
+        // Enable download
+        downloadLink.href = imageUrl;
+        downloadLink.style.display = "block";
+
+        decryptResultDiv.innerHTML = `<strong>✅ Decryption Successful!</strong>`;
+      } else {
+        const error = await response.json();
+        decryptResultDiv.innerHTML = `<span style="color:red;">❌ Error: ${error.error || "Unknown"}</span>`;
+        decryptedImage.src = "";
+        downloadLink.style.display = "none";
+      }
+    }
+  </script>
+</body>
+</html>
